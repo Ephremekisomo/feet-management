@@ -26,6 +26,7 @@ function DriverDashboard({ user, vehicles }) {
   const [destination, setDestination] = useState('');
   const [routeData, setRouteData] = useState(null);
   const [routePolyline, setRoutePolyline] = useState(null);
+  const [assignedVehicleId, setAssignedVehicleId] = useState(null);
 
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -33,8 +34,28 @@ function DriverDashboard({ user, vehicles }) {
   const polylineRef = useRef(null);
   const socketRef = useRef(null);
 
-  // Get driver's assigned vehicle
-  const assignedVehicle = vehicles.find(v => v.driver_id === user.driver_id);
+  // Get driver's assigned vehicle from active service request
+  const assignedVehicle = assignedVehicleId ? vehicles.find(v => v.id === assignedVehicleId) : null;
+
+  // Function to load active vehicle assignment from service requests
+  const loadActiveAssignment = async () => {
+    try {
+      const data = await api.getServiceRequests();
+      const driverRequests = data.service_requests || [];
+      // Find active assignments (assigned or in_progress) for this driver
+      const activeRequest = driverRequests.find(
+        req => req.driver_id === user.driver_id && 
+        (req.status === 'assigned' || req.status === 'in_progress')
+      );
+      if (activeRequest && activeRequest.vehicle_id) {
+        setAssignedVehicleId(activeRequest.vehicle_id);
+      } else {
+        setAssignedVehicleId(null);
+      }
+    } catch (error) {
+      console.error('Error loading active assignment:', error);
+    }
+  };
 
   // Initialize socket connection
   useEffect(() => {
@@ -44,6 +65,17 @@ function DriverDashboard({ user, vehicles }) {
 
     socketRef.current.on('connect', () => {
       console.log('Driver socket connected', socketRef.current.id);
+    });
+
+    // Listen for service request updates to refresh vehicle assignment
+    socketRef.current.on('service_request:updated', (request) => {
+      // Refresh active assignment when service request is updated
+      loadActiveAssignment();
+    });
+
+    socketRef.current.on('service_request:assigned', (request) => {
+      // Refresh when a new assignment is made
+      loadActiveAssignment();
     });
 
     return () => {
@@ -70,9 +102,10 @@ function DriverDashboard({ user, vehicles }) {
     };
   }, []);
 
-  // Load driver's trips
+  // Load driver's trips and check for active assignments
   useEffect(() => {
     loadMyTrips();
+    loadActiveAssignment();
   }, [user]);
 
   const loadMyTrips = async () => {
@@ -163,7 +196,7 @@ function DriverDashboard({ user, vehicles }) {
   };
 
   const startTrip = async () => {
-    const vehicleId = selectedVehicle || (assignedVehicle ? assignedVehicle.id : null);
+    const vehicleId = selectedVehicle || assignedVehicleId;
     if (!vehicleId) {
       alert('Please select a vehicle first');
       return;
@@ -215,7 +248,7 @@ function DriverDashboard({ user, vehicles }) {
 
   const handleFuelSubmit = async (e) => {
     e.preventDefault();
-    const vehicleId = selectedVehicle || (assignedVehicle ? assignedVehicle.id : null);
+    const vehicleId = selectedVehicle || assignedVehicleId;
     if (!vehicleId) {
       alert('Please select a vehicle first');
       return;
@@ -251,7 +284,7 @@ function DriverDashboard({ user, vehicles }) {
 
   const handleIncidentSubmit = async (e) => {
     e.preventDefault();
-    const vehicleId = selectedVehicle || (assignedVehicle ? assignedVehicle.id : null);
+    const vehicleId = selectedVehicle || assignedVehicleId;
 
     try {
       // Create incident first
@@ -334,7 +367,7 @@ function DriverDashboard({ user, vehicles }) {
       const durationMin = Math.round(durationSec / 60);
       
       // Get vehicle fuel consumption rate (default 8L/100km if not specified)
-      const vehicleId = selectedVehicle || (assignedVehicle ? assignedVehicle.id : null);
+      const vehicleId = selectedVehicle || assignedVehicleId;
       const vehicle = vehicles.find(v => v.id === parseInt(vehicleId));
       const fuelRate = vehicle?.fuel_consumption || 8; // L per 100km
       const fuelConsumption = (distanceKm * fuelRate) / 100;
@@ -400,13 +433,13 @@ function DriverDashboard({ user, vehicles }) {
         {/* Vehicle Selection */}
         <div className="section">
           <h3>🚙 Vehicle Assignment</h3>
-          {assignedVehicle ? (
+          {assignedVehicleId ? (
             <div className="vehicle-info-card">
               <div className="vehicle-icon">🚚</div>
               <div className="vehicle-details">
-                <h4>{assignedVehicle.make} {assignedVehicle.model}</h4>
-                <p className="license-plate">{assignedVehicle.license_plate}</p>
-                <p className="vehicle-status">Status: <span className="active">Active</span></p>
+                <h4>{assignedVehicle?.make} {assignedVehicle?.model}</h4>
+                <p className="license-plate">{assignedVehicle?.license_plate}</p>
+                <p className="vehicle-status">Status: <span className="active">Assigné</span></p>
               </div>
             </div>
           ) : (

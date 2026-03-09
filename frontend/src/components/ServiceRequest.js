@@ -23,8 +23,7 @@ function ServiceRequest({ user, vehicles }) {
     scheduled_time: '',
     priority: 'normal',
     notes: '',
-    vehicle_id: '',
-    estimated_price: ''
+    vehicle_id: ''
   });
 
   useEffect(() => {
@@ -57,8 +56,7 @@ function ServiceRequest({ user, vehicles }) {
     const service = services.find(s => s.id === parseInt(serviceId));
     setFormData(prev => ({
       ...prev,
-      service_id: serviceId,
-      estimated_price: service?.base_price || 0
+      service_id: serviceId
     }));
   };
 
@@ -70,7 +68,6 @@ function ServiceRequest({ user, vehicles }) {
     try {
       const payload = {
         ...formData,
-        estimated_price: parseFloat(formData.estimated_price) || 0,
         pickup_lat: formData.pickup_lat ? parseFloat(formData.pickup_lat) : null,
         pickup_lng: formData.pickup_lng ? parseFloat(formData.pickup_lng) : null,
         dropoff_lat: formData.dropoff_lat ? parseFloat(formData.dropoff_lat) : null,
@@ -94,8 +91,7 @@ function ServiceRequest({ user, vehicles }) {
         scheduled_time: '',
         priority: 'normal',
         notes: '',
-        vehicle_id: '',
-        estimated_price: ''
+        vehicle_id: ''
       });
       loadData();
     } catch (error) {
@@ -167,7 +163,7 @@ function ServiceRequest({ user, vehicles }) {
                   <option value="">Selectionner un service</option>
                   {services.map(service => (
                     <option key={service.id} value={service.id}>
-                      {service.name} - {service.base_price?.toLocaleString()} CDF
+                      {service.name}
                     </option>
                   ))}
                 </select>
@@ -317,17 +313,7 @@ function ServiceRequest({ user, vehicles }) {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Prix estime (CDF)</label>
-                <input
-                  type="number"
-                  name="estimated_price"
-                  value={formData.estimated_price}
-                  readOnly
-                />
-              </div>
-            </div>
+
 
             <div className="form-group">
               <label>Notes supplementaires</label>
@@ -363,7 +349,6 @@ function ServiceRequest({ user, vehicles }) {
                   <th>Date prevue</th>
                   <th>Statut</th>
                   <th>Priorite</th>
-                  <th>Prix estime</th>
                 </tr>
               </thead>
               <tbody>
@@ -378,7 +363,6 @@ function ServiceRequest({ user, vehicles }) {
                     </td>
                     <td>{getStatusBadge(request.status)}</td>
                     <td>{getPriorityBadge(request.priority)}</td>
-                    <td>{request.estimated_price?.toLocaleString() || '-'} CDF</td>
                   </tr>
                 ))}
               </tbody>
